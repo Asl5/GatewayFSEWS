@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Context path="/GatewayFSE">
+        <!-- Definizione del DataSource -->
+    <Resource name="jdbc/FSEGatewayDataSource"
+              auth="Container"
+              type="javax.sql.DataSource"
+              factory="org.apache.tomcat.jdbc.pool.DataSourceFactory"
+              driverClassName="oracle.jdbc.OracleDriver"
+              url="jdbc:oracle:thin:@//mnucl_sfe:1549/MNUCL"
+              username="TOPDBF"
+              password="caponord01"
+              maxActive="10"
+              initialSize="5"
+              validationQuery="SELECT 1 FROM DUAL"
+              testOnBorrow="true"
+              useJmx="false"/>
+</Context>

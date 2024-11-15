@@ -14,6 +14,8 @@ import java.util.HashMap;
 import java.util.Map;
 import io.jsonwebtoken.SignatureAlgorithm;
 import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.servlet.ServletContext;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
@@ -27,6 +29,11 @@ public class TokenJWTUtility {
     static String pathFileToPublish = null;
     static Integer nHour = 24;
     static String aliasP12 = null;
+    private final Logger logger;
+
+    public TokenJWTUtility(Logger logger) {
+        this.logger = logger;
+    }
 
     private static String get(Map<String, String> mapJD, JWTAuthEnum jdk) {
         return mapJD.get(jdk.getKey());
@@ -39,40 +46,67 @@ public class TokenJWTUtility {
         return iss.replaceFirst("integrity:", "").replaceFirst("auth:", "");
     }
 
-    public static TokenResponseDTO CreaToken(String tipoProgramma, String cfPaziente, String cfOperatore, Properties properties,ServletContext context) throws Exception {
-        //System.out.print(c.getTipo());
+    public TokenResponseDTO CreaToken(String tipoProgramma, String cfPaziente, String cfOperatore, Properties properties, ServletContext context) throws Exception {
+        logger.log(Level.INFO, "Creating JWT token for program type: {0}", tipoProgramma);
         TokenResponseDTO t = buildTokens(tipoProgramma, cfPaziente, cfOperatore, properties, context);
 
-        //System.out.println(t.getFseJwtSignature() + t.getFseJwtSignature());
+        if (t.getFseJwtSignature() == null || t.getAuthorizationBearer() == null) {
+            logger.log(Level.WARNING, "JWT token creation failed for program type: {0}", tipoProgramma);
+        } else {
+            logger.log(Level.INFO, "JWT token successfully created for program type: {0}", tipoProgramma);
+        }
         return t;
     }
 
-    private static TokenResponseDTO buildTokens(String tipo, String cfPaz, String cfSub, Properties properties,ServletContext context) throws Exception {
+    private TokenResponseDTO buildTokens(String tipo, String cfPaz, String cfSub, Properties properties, ServletContext context) throws Exception {
+        logger.log(Level.FINE, "Building tokens for program type: {0}", tipo);
         Map<String, String> mapJD = null;
         TokenMap c = new TokenMap();
         TokenMap.ProgramType programType = TokenMap.ProgramType.valueOf(tipo);
         mapJD = c.mappa(programType, cfSub, cfPaz, properties, context);
         switch (tipo) {
-            case "LDO" ->
+            case "LDO" -> {
+                logger.log(Level.FINE, "Selected password for type LDO");
                 pwdP12 = "L3tt3ra!".toCharArray();
-            case "CERT_VACC_SKIPPER" ->
+            }
+            case "CERT_VACC_SKIPPER" -> {
+                logger.log(Level.FINE, "Selected password for type CERT_VACC_SKIPPER");
                 pwdP12 = "L3tt3ra!".toCharArray();
-            case "SING_VACC_SKIPPER" ->
+            }
+            case "SING_VACC_SKIPPER" -> {
+                logger.log(Level.FINE, "Selected password for type SING_VACC_SKIPPER");
                 pwdP12 = "L3tt3ra!".toCharArray();
-            case "SING_VACC_PHTRACK" ->
+            }
+            case "SING_VACC_PHTRACK" -> {
+                logger.log(Level.FINE, "Selected password for type SING_VACC_PHTRACK");
                 pwdP12 = "S1aKeySt0re".toCharArray();
-            case "CERT_VACC" ->
+            }
+            case "CERT_VACC" -> {
+                logger.log(Level.FINE, "Selected password for type CERT_VACC");
                 pwdP12 = "S1aKeySt0re".toCharArray();
-            case "SING_VACC" ->
+            }
+            case "SING_VACC" -> {
+                logger.log(Level.FINE, "Selected password for type SING_VACC");
                 pwdP12 = "S1aKeySt0re".toCharArray();
+            }
             default -> {
+                logger.log(Level.SEVERE, "Invalid program type: {0}", tipo);
                 TokenResponseDTO t = new TokenResponseDTO(null, null);
                 System.err.print("Errore nel tipo di documento");
                 return t;
             }
         }
+
         byte[] privateKeyP12 = Utility.getFileFromFS(get(mapJD, JWTAuthEnum.P12_PATH));
+        if (privateKeyP12 == null) {
+            logger.log(Level.SEVERE, "Failed to load private key from path");
+        }
+
         byte[] pem = Utility.getFileFromFS(get(mapJD, JWTAuthEnum.PEM_PATH));
+        if (pem == null) {
+            logger.log(Level.SEVERE, "Failed to load PEM from path");
+        }
+
         byte[] fileToHash = null;
         if (!Utility.nullOrEmpty(pathFileToPublish)) {
             fileToHash = Utility.getFileFromFS(pathFileToPublish);
@@ -80,11 +114,17 @@ public class TokenJWTUtility {
         return getTokens(mapJD, privateKeyP12, pem, fileToHash);
     }
 
-    private static TokenResponseDTO getTokens(Map<String, String> mapJD, byte[] privateKeyP12, byte[] pem, byte[] fileToHash) throws Exception {
+    private TokenResponseDTO getTokens(Map<String, String> mapJD, byte[] privateKeyP12, byte[] pem, byte[] fileToHash) throws Exception {
+        logger.log(Level.FINE, "Generating tokens with given data");
 
         Security.addProvider((Provider) new BouncyCastleProvider());
+        logger.log(Level.FINE, "BouncyCastle provider added");
 
         Key privateKey = Utility.extractKeyByAliasFromP12(pwdP12, aliasP12, privateKeyP12);
+        if (privateKey == null) {
+            logger.log(Level.SEVERE, "Failed to extract private key");
+            throw new Exception("Private key extraction failed");
+        }
 
         String cleanedPEM = new String(pem)
                 .replace("-----BEGIN PUBLIC KEY-----", "")
@@ -100,8 +140,15 @@ public class TokenJWTUtility {
         Date iat = new Date();
 
         Date exp = Utility.addHoursToJavaUtilDate(iat, nHour);
+        
+        logger.log(Level.FINE, "Generating auth JWT");
         String jwt = generateAuthJWT(mapJD, privateKey, publicKey, iat, exp, iss);
+        logger.log(Level.FINE, "Auth JWT generated successfully");
+        
+        logger.log(Level.FINE, "Generating claims JWT");
         String claimsJwt = generateClaimsJWT(mapJD, privateKey, publicKey, iat, exp, iss, fileToHash);
+        logger.log(Level.FINE, "Claims JWT generated successfully");
+        
         return new TokenResponseDTO(jwt, claimsJwt);
     }
 
@@ -161,6 +208,5 @@ public class TokenJWTUtility {
         return Jwts.builder().setHeaderParams(headerParams).setClaims(claims)
                 .signWith(SignatureAlgorithm.RS256, privateKey).compact();
     }
-
 
 }

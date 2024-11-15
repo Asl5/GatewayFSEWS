@@ -86,4 +86,19 @@ public class ValidationErrorResponseDTO {
     public void setWorkflowInstanceId(String workflowInstanceId) {
         this.workflowInstanceId = workflowInstanceId;
     }
+
+    @Override
+    public String toString() {
+        return "ValidationErrorResponseDTO{"
+                + "traceID='" + traceID + '\''
+                + ", spanID='" + spanID + '\''
+                + ", type='" + type + '\''
+                + ", title='" + title + '\''
+                + ", detail='" + detail + '\''
+                + ", status=" + status
+                + ", instance='" + instance + '\''
+                + ", workflowInstanceId='" + workflowInstanceId + '\''
+                + '}';
+    }
+
 }

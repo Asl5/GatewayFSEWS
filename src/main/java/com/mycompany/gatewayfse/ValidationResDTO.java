@@ -47,4 +47,15 @@ public class ValidationResDTO {
     public void setWarning(String warning) {
         this.warning = warning;
     }
+
+    @Override
+    public String toString() {
+        return "ValidationResDTO{"
+                + "traceID='" + traceID + '\''
+                + ", spanID='" + spanID + '\''
+                + ", workflowInstanceId='" + workflowInstanceId + '\''
+                + ", warning='" + warning + '\''
+                + '}';
+    }
+
 }

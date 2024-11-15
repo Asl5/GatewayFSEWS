@@ -15,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Properties;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.net.ssl.SSLContext;
 import javax.servlet.ServletContext;
@@ -37,6 +36,7 @@ public class DocumentsValidation extends HttpServlet {
     Logger logger;
     private static final ObjectMapper objectMapper = new ObjectMapper();
     static Repository rep;
+    static TokenJWTUtility tu;
 
     /**
      * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
@@ -57,12 +57,13 @@ public class DocumentsValidation extends HttpServlet {
         File file = null;
         ServletContext context = getServletContext();
 
-        //Utility.logInfo(logger, rep, "METHOD START", servletName, logString);
+        Utility.logInfo(logger, rep, "METHOD START", servletName, logString);
 
         try {
             // Supponiamo che l'URL e l'Authorization Header siano già stati letti dalla servlet
             String tokenUrl = properties.getProperty("token.url");
             String authorizationHeader = properties.getProperty("authorization.header");
+            String urlValidations = properties.getProperty("url.validation");
 
             // Estrai i nuovi parametri dalla richiesta
             // Ottieni i parametri dalla richiesta multipart
@@ -85,6 +86,7 @@ public class DocumentsValidation extends HttpServlet {
                     || filePart == null) {
                 // Se uno dei parametri è mancante o invalido, restituisci un errore 400
                 ErrorResponse errorResponse = Utility.handleBadRequest(response, "Parametri mancanti o invalidi");
+                Utility.logError(logger, rep, "Parametri mancanti o invalidi", servletName, logString);
                 // Restituzione del JSON
                 objectMapper.writeValue(response.getWriter(), errorResponse);
                 return;
@@ -103,8 +105,8 @@ public class DocumentsValidation extends HttpServlet {
             String requestBodyJson = "{\"healthDataFormat\": \"CDA\", \"mode\": \"ATTACHMENT\", \"activity\": \"VALIDATION\"}";
 
             try {
-                
-                //Utility.logInfo(logger, rep, "Richiedo Access Token...", servletName, logString);
+
+                Utility.logInfo(logger, rep, "Richiedo Access Token...", servletName, logString);
                 // Richiama la funzione per ottenere l'access token o l'errore
                 result = HttpUtility.getAccessToken(tokenUrl, authorizationHeader);
 
@@ -116,7 +118,7 @@ public class DocumentsValidation extends HttpServlet {
                 switch (result) {
                     //case TokenResponse tokenResponse -> response.getWriter().write(new ObjectMapper().writeValueAsString(tokenResponse));
                     case ErrorTokenResponse errorResponse -> {
-                        //Utility.logError(logger, rep, errorResponse.error_description, servletName, logString);
+                        Utility.logError(logger, rep, errorResponse.error_description, servletName, logString);
                         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                         response.getWriter().write(new ObjectMapper().writeValueAsString(errorResponse));
                         return; // Termina qui se c'è un errore di autenticazione
@@ -126,17 +128,19 @@ public class DocumentsValidation extends HttpServlet {
                 }
             } catch (IOException e) {
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Errore durante l'ottenimento del token: " + e.getMessage());
-                //Utility.logError(logger, rep, e.getLocalizedMessage(), servletName, logString);
+                Utility.logError(logger, rep, e.getLocalizedMessage(), servletName, logString);
                 return; // Termina l'elaborazione se c'è un'eccezione
             }
-            
-            //Utility.logInfo(logger, rep, "Access Token ottenuto", servletName, logString);
+
+            Utility.logInfo(logger, rep, "Access Token ottenuto", servletName, logString);
 
             // Access token e JWT
             //String accessToken = "Bearer " + ((TokenResponse)result).access_token;
-            TokenResponseDTO jwtToken = TokenJWTUtility.CreaToken(tipoProgramma, codiceFiscalePaziente, codiceFiscaleOperatore, properties, context);
+            Utility.logInfo(logger, rep, "Gerazione dei JWT...", servletName, logString);
+            TokenResponseDTO jwtToken = tu.CreaToken(tipoProgramma, codiceFiscalePaziente, codiceFiscaleOperatore, properties, context);
             String fseJwtAuthorization = jwtToken.getAuthorizationBearer();
             String fseJwtSignature = jwtToken.getFseJwtSignature();
+            Utility.logInfo(logger, rep, "JWT generati", servletName, logString);
 
             if (result instanceof TokenResponse tokenResponse) {
                 String relativePathP12 = properties.getProperty("path.FileP12");
@@ -148,11 +152,13 @@ public class DocumentsValidation extends HttpServlet {
 //                File serverFile = new File("C:\\Users\\f.matraxia\\Documents\\FSE regionale\\FSE Dati\\Certificati Postman\\modipa-val.fse.salute.gov.der");
 
                 //SSLContext sslContext = TLSUtility.configureTLS(crtFile, keyFile, serverFile, "L3tt3ra!");
+                Utility.logInfo(logger, rep, "Configuro il contesto SSL", servletName, logString);
                 // Configura il contesto SSL
                 SSLContext sslContext = TLSUtility.prepareSSLContext(properties, absolutePathP12);//TLSUtility.configureTLS(absolutePathP12, properties.getProperty("passwordTLS"));
 
+                Utility.logInfo(logger, rep, "Invocazione dell'endpoint " + urlValidations, servletName, logString);
                 // Esegui la richiesta utilizzando HttpUtility
-                Object resultValidation = HttpUtility.postMultipartRequest("https://fascicolosanitario-test.regione.liguria.it/api/gateway/v1/documents/validation",
+                Object resultValidation = HttpUtility.postMultipartRequest(urlValidations,
                         tokenResponse.access_token, // Rimuovi il prefisso "Bearer "
                         fseJwtAuthorization,
                         fseJwtSignature,
@@ -169,14 +175,16 @@ public class DocumentsValidation extends HttpServlet {
 
                 if (resultValidation instanceof ValidationResDTO) {
                     response.setStatus(HttpServletResponse.SC_OK);
+                    Utility.logInfo(logger, rep, "L'endpoint ha risposto: " + resultValidation.toString(), servletName, logString);
                     objectMapper.writeValue(response.getWriter(), resultValidation);
                 } else if (resultValidation instanceof ValidationErrorResponseDTO) {
                     response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                    Utility.logInfo(logger, rep, "L'endpoint ha risposto: " + resultValidation.toString(), servletName, logString);
                     objectMapper.writeValue(response.getWriter(), resultValidation);
                 }
             }
         } catch (Exception ex) {
-            Logger.getLogger(DocumentsValidation.class.getName()).log(Level.SEVERE, null, ex);
+            Utility.logError(logger, rep, ex.getLocalizedMessage(), servletName, logString);
             // Gestione dell'eccezione non gestita
             ErrorResponse errorResponse = Utility.handleException(response, ex);
             // Restituzione del JSON
@@ -186,22 +194,9 @@ public class DocumentsValidation extends HttpServlet {
             if (file != null) {
                 Files.deleteIfExists(file.toPath());
             }
-            
-            //Utility.logInfo(logger, rep, "METHOD END", servletName, logString);
-            
+
+            Utility.logInfo(logger, rep, "METHOD END", servletName, logString);
         }
-    }
-
-    // Funzione fittizia per generare il JWT per l'Authorization (deve essere implementata)
-    private String generateJwtAuthorization() {
-        // Implementa la logica per generare il JWT necessario
-        return "eyJdWIiOiIxMjM0NTY3ODkw … Ok6yJV_adQssw5c";
-    }
-
-    // Funzione fittizia per generare il JWT per la firma (deve essere implementata)
-    private String generateJwtSignature() {
-        // Implementa la logica per generare il JWT necessario
-        return "eyJdWIiOiIxMjM0NTY3ODkw … Ok6yJV_adQssw5c";
     }
 
     /**
@@ -218,9 +213,10 @@ public class DocumentsValidation extends HttpServlet {
             }
             properties.load(input);
 
-            Utility.InizializeLogger(properties, this.getClass().getName());
+            Utility.initializeLogger(properties, this.getClass().getName());
             logger = Utility.getLogger();
-            //rep = new Repository(logger);
+            rep = new Repository(logger);
+            tu = new TokenJWTUtility(logger);
         } catch (IOException ex) {
             throw new ServletException("Error loading configuration", ex);
         }

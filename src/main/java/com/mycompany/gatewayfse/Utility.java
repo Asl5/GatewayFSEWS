@@ -10,12 +10,15 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.Key;
 import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
 import java.security.Security;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -23,6 +26,9 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -37,8 +43,14 @@ import org.apache.commons.codec.binary.Hex;
  */
 public class Utility {
 
-    private static Logger logger = null;
+    //private static Logger logger = null;
     private static boolean isLoggerInitialized = false;
+
+    private static Logger logger;
+    private static LocalDate currentDate;
+    private static FileHandler fileHandler;
+    private static ScheduledExecutorService scheduler;
+    private static boolean isDebugMode;
     /**
      * Chunk size file.
      */
@@ -50,42 +62,142 @@ public class Utility {
      * @param className the name of the class where the logger is used
      * @param properties the properties containing the log file path
      */
-    public static synchronized void InizializeLogger(Properties properties, String className) {
-        if (isLoggerInitialized) {
-            return; // Avoid reinitialization
+//    public static synchronized void InizializeLogger(Properties properties, String className) {
+//        if (isLoggerInitialized) {
+//            return; // Avoid reinitialization
+//        }
+//
+//        logger = Logger.getLogger(className);
+//        logger.setUseParentHandlers(false); // Disable parent handlers
+//
+//        try {
+//            // Rimuovi gli handler esistenti per evitare più file di log
+//            for (Handler handler : logger.getHandlers()) {
+//                logger.removeHandler(handler);
+//                handler.close();
+//            }
+//
+//            // Estrai solo il nome della classe senza il package
+//            String simpleClassName = className.substring(className.lastIndexOf('.') + 1);
+//
+//            // Configura il nome del file con la data corrente
+//            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+//            String date = dtf.format(LocalDateTime.now());
+//
+//            String logFilePath = properties.getProperty("log.path") + date + "-" + simpleClassName + ".log";
+//
+//            // Configura il FileHandler con rotazione basata sulla dimensione del file
+//            Handler fileHandler = new FileHandler(logFilePath, 10485760, 5, true);
+//            fileHandler.setFormatter(new SimpleFormatter());
+//
+//            logger.addHandler(fileHandler);
+//            logger.setLevel(Level.ALL);
+//
+//            isLoggerInitialized = true;
+//            logger.log(Level.INFO, "Logger initialized for {0}", simpleClassName);
+//
+//        } catch (IOException e) {
+//            logger.log(Level.SEVERE, "Failed to initialize logger", e);
+//        }
+//    }
+    /**
+     * Inizializza il logger per una determinata classe con configurazioni da un
+     * file di proprietà.
+     *
+     * @param properties Le proprietà caricate dal file di configurazione.
+     * @param className Il nome completo della classe per cui inizializzare il
+     * logger.
+     */
+    public static synchronized void initializeLogger(Properties properties, String className) {
+        if (logger != null) {
+            return; // Evita la reinizializzazione
         }
 
         logger = Logger.getLogger(className);
-        logger.setUseParentHandlers(false); // Disable parent handlers
+        logger.setUseParentHandlers(false);
+
+        // Verifica se l'applicazione è in modalità debug
+        isDebugMode = Boolean.parseBoolean(properties.getProperty("debug.mode", "false"));
+        Level logLevel = isDebugMode ? Level.FINE : Level.INFO;
 
         try {
-            // Rimuovi gli handler esistenti per evitare più file di log
-            for (Handler handler : logger.getHandlers()) {
-                logger.removeHandler(handler);
-                handler.close();
-            }
+            currentDate = LocalDate.now();
+            setupFileHandler(properties, className, currentDate, logLevel);
 
-            // Estrai solo il nome della classe senza il package
-            String simpleClassName = className.substring(className.lastIndexOf('.') + 1);
-
-            // Configura il nome del file con la data corrente
-            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-            String date = dtf.format(LocalDateTime.now());
-
-            String logFilePath = properties.getProperty("log.path") + date + "-" + simpleClassName + ".log";
-
-            // Configura il FileHandler con rotazione basata sulla dimensione del file
-            Handler fileHandler = new FileHandler(logFilePath, 10485760, 5, true);
-            fileHandler.setFormatter(new SimpleFormatter());
-
-            logger.addHandler(fileHandler);
-            logger.setLevel(Level.ALL);
-
+            // Avvia un scheduler per aggiornare il file di log ogni giorno
+            scheduler = Executors.newSingleThreadScheduledExecutor();
+            scheduler.scheduleAtFixedRate(() -> {
+                LocalDate newDate = LocalDate.now();
+                if (!newDate.equals(currentDate)) {
+                    currentDate = newDate;
+                    updateFileHandler(properties, className, currentDate, logLevel);
+                }
+            }, 1, 1, TimeUnit.DAYS);
             isLoggerInitialized = true;
-            logger.log(Level.INFO, "Logger initialized for {0}", simpleClassName);
+            logger.log(Level.INFO, "Logger initialized for {0} in {1} mode", new Object[]{className, isDebugMode ? "DEBUG" : "PRODUCTION"});
 
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Failed to initialize logger", e);
+            System.err.println("Failed to initialize logger for " + className + ": " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Configura un nuovo FileHandler per il logger con il nome del file basato
+     * sulla data corrente.
+     *
+     * @param properties Le proprietà caricate dal file di configurazione.
+     * @param className Il nome completo della classe per cui configurare il
+     * logger.
+     * @param date La data corrente per creare il nome del file di log.
+     * @param logLevel Il livello di log da impostare.
+     * @throws IOException Se si verifica un errore durante la creazione del
+     * file di log.
+     */
+    private static void setupFileHandler(Properties properties, String className, LocalDate date, Level logLevel) throws IOException {
+        // Rimuovi l'handler esistente se presente
+        if (fileHandler != null) {
+            logger.removeHandler(fileHandler);
+            fileHandler.close();
+        }
+
+        // Estrai solo il nome della classe senza il package
+        String simpleClassName = className.substring(className.lastIndexOf('.') + 1);
+        String dateStr = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String logDirectoryPath = properties.getProperty("log.path");
+
+        if (logDirectoryPath == null || logDirectoryPath.isEmpty()) {
+            throw new IOException("Log path is not defined in properties.");
+        }
+
+        // Crea la directory di log se non esiste
+        Files.createDirectories(Paths.get(logDirectoryPath));
+
+        String logFilePath = logDirectoryPath + "/" + dateStr + "-" + simpleClassName + ".log";
+        fileHandler = new FileHandler(logFilePath, 10485760, 5, true);
+        fileHandler.setFormatter(new SimpleFormatter());
+        fileHandler.setLevel(logLevel);
+
+        logger.addHandler(fileHandler);
+        logger.setLevel(logLevel);
+    }
+
+    /**
+     * Aggiorna il FileHandler per il logger quando la data cambia.
+     *
+     * @param properties Le proprietà caricate dal file di configurazione.
+     * @param className Il nome completo della classe per cui aggiornare il
+     * logger.
+     * @param newDate La nuova data per creare un nuovo file di log.
+     * @param logLevel Il livello di log da impostare.
+     */
+    private static void updateFileHandler(Properties properties, String className, LocalDate newDate, Level logLevel) {
+        try {
+            setupFileHandler(properties, className, newDate, logLevel);
+            logger.log(Level.INFO, "Logger updated for new date: {0}", newDate);
+        } catch (IOException e) {
+            System.err.println("Failed to update logger for " + className + ": " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -111,7 +223,7 @@ public class Utility {
      */
     public static ErrorResponse handleException(HttpServletResponse response, Exception e) throws IOException {
         // Log dell'eccezione
-        logger.log(Level.SEVERE, "Errore: {0}", e.getMessage());
+        //logger.log(Level.SEVERE, "Errore: {0}", e.getMessage());
 
         // Imposta il tipo di risposta JSON e lo stato HTTP
         response.setContentType("application/json");
@@ -181,29 +293,46 @@ public class Utility {
      * @throws Exception
      */
     public static Key extractKeyByAliasFromP12(char[] password, String alias, byte[] p12) throws Exception {
+        logger.log(Level.WARNING, "Extracting key by alias from p12...");
         try (ByteArrayInputStream bais = new ByteArrayInputStream(p12)) {
+            logger.log(Level.FINE, "Initializing KeyStore with PKCS12 format...");
             java.security.KeyStore keyStore = KeyStore.getInstance("PKCS12", "BC");
+
+            logger.log(Level.FINE, "Listing available security providers...");
             for (Provider provider : Security.getProviders()) {
-                System.out.println(provider.getName());
+                logger.log(Level.FINE, "Provider found: {0}", provider.getName());
             }
+
+            logger.log(Level.FINE, "Loading KeyStore...");
             keyStore.load(bais, password);
-            //If no alias is specified try to find a key and return the first found
+
             if (nullOrEmpty(alias)) {
+                logger.log(Level.FINE, "No alias provided, searching for first key entry...");
                 Enumeration<String> aliases = keyStore.aliases();
                 while (aliases.hasMoreElements()) {
                     String a = aliases.nextElement();
+                    logger.log(Level.FINER, "Checking alias: {0}", a);
                     if (keyStore.isKeyEntry(a)) {
-                        //LOGGER.info(() -> String.format("Using alias: %s", a));
+                        logger.log(Level.INFO, "Key entry found, using alias: {0}", a);
                         return keyStore.getKey(a, password);
                     }
                 }
+                logger.log(Level.WARNING, "No key entry found in the KeyStore.");
             } else {
-                return keyStore.getKey(alias, password);
+                logger.log(Level.FINE, "Searching for key with specified alias: {0}", alias);
+                if (keyStore.isKeyEntry(alias)) {
+                    logger.log(Level.INFO, "Key entry found for alias: {0}", alias);
+                    return keyStore.getKey(alias, password);
+                } else {
+                    logger.log(Level.WARNING, "No key entry found for alias: {0}", alias);
+                }
             }
         } catch (Exception e) {
-
-            logger.log(Level.SEVERE, "Error while extracting key by alias from p12: %s", e.getLocalizedMessage());
+            logger.log(Level.SEVERE, "Error while extracting key by alias from p12: {0}", e.getLocalizedMessage());
+            logger.log(Level.FINE, "Stack trace: ", e);
         }
+
+        logger.log(Level.WARNING, "Returning null, no key extracted.");
         return null;
     }
 

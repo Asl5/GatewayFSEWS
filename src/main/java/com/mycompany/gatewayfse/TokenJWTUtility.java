@@ -67,27 +67,27 @@ public class TokenJWTUtility {
         switch (tipo) {
             case "LDO" -> {
                 logger.log(Level.FINE, "Selected password for type LDO");
-                pwdP12 = "L3tt3ra!".toCharArray();
+                pwdP12 = properties.getProperty("p12.Topgate.password").toCharArray();
             }
             case "CERT_VACC_SKIPPER" -> {
                 logger.log(Level.FINE, "Selected password for type CERT_VACC_SKIPPER");
-                pwdP12 = "L3tt3ra!".toCharArray();
+                pwdP12 = properties.getProperty("p12.Topgate.password").toCharArray();
             }
             case "SING_VACC_SKIPPER" -> {
                 logger.log(Level.FINE, "Selected password for type SING_VACC_SKIPPER");
-                pwdP12 = "L3tt3ra!".toCharArray();
+                pwdP12 = properties.getProperty("p12.Topgate.password").toCharArray();
             }
             case "SING_VACC_PHTRACK" -> {
                 logger.log(Level.FINE, "Selected password for type SING_VACC_PHTRACK");
-                pwdP12 = "S1aKeySt0re".toCharArray();
+                pwdP12 = properties.getProperty("p12.asl5.password").toCharArray();
             }
             case "CERT_VACC" -> {
                 logger.log(Level.FINE, "Selected password for type CERT_VACC");
-                pwdP12 = "S1aKeySt0re".toCharArray();
+                pwdP12 =  properties.getProperty("p12.asl5.password").toCharArray();
             }
             case "SING_VACC" -> {
                 logger.log(Level.FINE, "Selected password for type SING_VACC");
-                pwdP12 = "S1aKeySt0re".toCharArray();
+                pwdP12 =  properties.getProperty("p12.asl5.password").toCharArray();
             }
             default -> {
                 logger.log(Level.SEVERE, "Invalid program type: {0}", tipo);

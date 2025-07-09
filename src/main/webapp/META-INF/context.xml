@@ -6,7 +6,7 @@
               type="javax.sql.DataSource"
               factory="org.apache.tomcat.jdbc.pool.DataSourceFactory"
               driverClassName="oracle.jdbc.OracleDriver"
-              url="jdbc:oracle:thin:@//mnucl_sfe:1549/MNUCL"
+              url="jdbc:oracle:thin:@//10.105.249.11:1534/topgate1"
               username="TOPDBF"
               password="caponord01"
               maxActive="10"

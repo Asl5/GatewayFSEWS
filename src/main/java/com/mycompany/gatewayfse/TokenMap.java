@@ -18,8 +18,8 @@ public class TokenMap {
 
     private static final String SUBJECT_ROLE = "DSA";
     private static final String PURPOSE_OF_USE = "TREATMENT";
-    private static final String ISSUER_LDO = "S1#111TOPGATEXXXX";
-    private static final String ISSUER_VACC = "S1#070105000000XX";
+    private static final String ISSUER_TOPGATE = "S1#070TOPGATEXXX1";
+    private static final String ISSUER_ASL = "S1#070105000000XX";
     private static final String LOCALITY = "RADIOLOGIA ASL5 PROVA^^^^^&2.16.840.1.113883.2.9.4.1.3&ISO^^^^070105010025";
     private static final String SUBJECT_ORG_ID = "070";
     private static final String SUBJECT_ORGANIZATION = "Regione Liguria";
@@ -35,7 +35,8 @@ public class TokenMap {
         SING_VACC_SKIPPER,
         SING_VACC_PHTRACK,
         CERT_VACC,
-        SING_VACC
+        SING_VACC,
+        RSA
     }
 
     public TokenMap() {
@@ -52,7 +53,7 @@ public class TokenMap {
                 String absolutePathPem = context.getRealPath(relativePathPem);
                 String relativePathP12 = properties.getProperty("p12.LDO");
                 String absolutePathP12 = context.getRealPath(relativePathP12);
-                mapJD.put("iss", ISSUER_LDO);
+                mapJD.put("iss", ISSUER_TOPGATE);
                 mapJD.put("subject_application_id", "letteradimissione");
                 mapJD.put("subject_application_vendor", "topgate");
                 mapJD.put("subject_application_version", "1.0");
@@ -60,7 +61,19 @@ public class TokenMap {
                 mapJD.put("pem_path", absolutePathPem);
                 mapJD.put("p12_path", absolutePathP12);
             }
-
+            case RSA -> {
+                String relativePathPem = properties.getProperty("pem.RSA");
+                String absolutePathPem = context.getRealPath(relativePathPem);
+                String relativePathP12 = properties.getProperty("p12.RSA");
+                String absolutePathP12 = context.getRealPath(relativePathP12);
+                mapJD.put("iss", ISSUER_TOPGATE); //da cambiare con quello TOPGATE poi
+                mapJD.put("subject_application_id", "refertospecialisticaambulatoriale");
+                mapJD.put("subject_application_vendor", "topgate");
+                mapJD.put("subject_application_version", "1.0");
+                mapJD.put("resource_hl7_type", "('11488-4^^2.16.840.1.113883.6.1')");
+                mapJD.put("pem_path", absolutePathPem);
+                mapJD.put("p12_path", absolutePathP12);
+            }
             case CERT_VACC_SKIPPER, SING_VACC_SKIPPER -> {
                 String relativePathPem = tipo == ProgramType.CERT_VACC_SKIPPER
                         ? properties.getProperty("pem.CERT_VACC_SKIPPER")
@@ -70,7 +83,7 @@ public class TokenMap {
                         ? properties.getProperty("p12.CERT_VACC_SKIPPER")
                         : properties.getProperty("p12.SING_VACC_SKIPPER");
                 String absolutePathP12 = context.getRealPath(relativePathP12);
-                mapJD.put("iss", ISSUER_LDO); // Issuer è lo stesso per entrambi
+                mapJD.put("iss", ISSUER_TOPGATE); // Issuer è lo stesso per entrambi
                 mapJD.put("subject_application_id", "skipper");
                 mapJD.put("subject_application_vendor", "topgate");
                 mapJD.put("subject_application_version", "1.0");
@@ -85,7 +98,7 @@ public class TokenMap {
                 String absolutePathPem = context.getRealPath(relativePathPem);
                 String relativePathP12 = properties.getProperty("p12.SING_VACC_PHTRACK");
                 String absolutePathP12 = context.getRealPath(relativePathP12);
-                mapJD.put("iss", ISSUER_VACC);
+                mapJD.put("iss", ISSUER_ASL);
                 mapJD.put("subject_application_id", "PHTRACK");
                 mapJD.put("subject_application_vendor", "ASL5");
                 mapJD.put("subject_application_version", "1.0");
@@ -103,7 +116,7 @@ public class TokenMap {
                         ? properties.getProperty("p12.CERT_VACC")
                         : properties.getProperty("p12.SING_VACC");
                 String absolutePathP12 = context.getRealPath(relativePathP12);
-                mapJD.put("iss", ISSUER_VACC);
+                mapJD.put("iss", ISSUER_ASL);
                 mapJD.put("subject_application_id", "GestioneVaccinazioni");
                 mapJD.put("subject_application_vendor", "ASL5");
                 mapJD.put("subject_application_version", "1.0");

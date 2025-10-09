@@ -104,6 +104,7 @@ public class DocumentsValidation extends HttpServlet {
             // Simuliamo il JSON del requestBody
             String requestBodyJson = "{\"healthDataFormat\": \"CDA\", \"mode\": \"ATTACHMENT\", \"activity\": \"VALIDATION\"}";
 
+            
             try {
 
                 Utility.logInfo(logger, rep, "Richiedo Access Token...", servletName, logString);
@@ -127,11 +128,16 @@ public class DocumentsValidation extends HttpServlet {
                     }
                 }
             } catch (IOException e) {
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Errore durante l'ottenimento del token: " + e.getMessage());
-                Utility.logError(logger, rep, e.getLocalizedMessage(), servletName, logString);
+                //response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Errore durante l'ottenimento del token: " + e.getMessage());
+                //Utility.logError(logger, rep, e.getLocalizedMessage(), servletName, logString);
+                Exception ex = new Exception("Errore nell'ottenimento del token: " + e.getLocalizedMessage());
+                ErrorResponse errorResponse = Utility.handleException(response, ex);
+                // Restituzione del JSON
+                objectMapper.writeValue(response.getWriter(), errorResponse);
                 return; // Termina l'elaborazione se c'è un'eccezione
             }
-
+            
+            
             Utility.logInfo(logger, rep, "Access Token ottenuto", servletName, logString);
 
             // Access token e JWT

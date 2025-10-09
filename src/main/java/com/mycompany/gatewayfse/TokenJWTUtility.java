@@ -69,6 +69,10 @@ public class TokenJWTUtility {
                 logger.log(Level.FINE, "Selected password for type LDO");
                 pwdP12 = properties.getProperty("p12.Topgate.password").toCharArray();
             }
+            case "RSA" -> {
+                logger.log(Level.FINE, "Selected password for type RSA");
+                pwdP12 = properties.getProperty("p12.Topgate.password").toCharArray(); //da cambiare 
+            }
             case "CERT_VACC_SKIPPER" -> {
                 logger.log(Level.FINE, "Selected password for type CERT_VACC_SKIPPER");
                 pwdP12 = properties.getProperty("p12.Topgate.password").toCharArray();
@@ -83,11 +87,11 @@ public class TokenJWTUtility {
             }
             case "CERT_VACC" -> {
                 logger.log(Level.FINE, "Selected password for type CERT_VACC");
-                pwdP12 =  properties.getProperty("p12.asl5.password").toCharArray();
+                pwdP12 = properties.getProperty("p12.asl5.password").toCharArray();
             }
             case "SING_VACC" -> {
                 logger.log(Level.FINE, "Selected password for type SING_VACC");
-                pwdP12 =  properties.getProperty("p12.asl5.password").toCharArray();
+                pwdP12 = properties.getProperty("p12.asl5.password").toCharArray();
             }
             default -> {
                 logger.log(Level.SEVERE, "Invalid program type: {0}", tipo);
@@ -140,15 +144,15 @@ public class TokenJWTUtility {
         Date iat = new Date();
 
         Date exp = Utility.addHoursToJavaUtilDate(iat, nHour);
-        
+
         logger.log(Level.FINE, "Generating auth JWT");
         String jwt = generateAuthJWT(mapJD, privateKey, publicKey, iat, exp, iss);
         logger.log(Level.FINE, "Auth JWT generated successfully");
-        
+
         logger.log(Level.FINE, "Generating claims JWT");
         String claimsJwt = generateClaimsJWT(mapJD, privateKey, publicKey, iat, exp, iss, fileToHash);
         logger.log(Level.FINE, "Claims JWT generated successfully");
-        
+
         return new TokenResponseDTO(jwt, claimsJwt);
     }
 

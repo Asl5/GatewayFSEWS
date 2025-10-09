@@ -397,7 +397,7 @@ public class Utility {
      */
     public static void logInfo(Logger logger, Repository repository, String message, String servletName, String logString) {
         logger.log(Level.INFO, message);
-        repository.LogDB("INFO", message, servletName, "ITCURA", logString);
+        if(repository != null) repository.LogDB("INFO", message, servletName, "GATEWAY FSE", logString);
     }
 
     /**
@@ -411,6 +411,6 @@ public class Utility {
      */
     public static void logError(Logger logger, Repository repository, String message, String servletName, String logString) {
         logger.log(Level.SEVERE, message);
-        repository.LogDB("ERROR", message, servletName, "ITCURA", logString);
+        if(repository != null) repository.LogDB("ERROR", message, servletName, "GATEWAY FSE", logString);
     }
 }

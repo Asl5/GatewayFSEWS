@@ -53,6 +53,8 @@ public class DocumentsValidation extends HttpServlet {
         String servletName = request.getServletPath();
         String logString = null;
 
+        long logId = 0;
+
         Object result = null;
         File file = null;
         ServletContext context = getServletContext();
@@ -76,6 +78,10 @@ public class DocumentsValidation extends HttpServlet {
             String codiceFiscaleOperatore = new String(cfOperatorePart.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
             String tipoProgramma = new String(tipoProgrammaPart.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
 
+            logId = rep.insertMonitoraggioGatewayInizio(
+                    servletName, codiceFiscalePaziente, codiceFiscaleOperatore, tipoProgramma
+            );
+
             // Estrai il file PDF dal form
             Part filePart = request.getPart("file"); // "file" è il nome dell'input nel form HTML
 
@@ -87,6 +93,19 @@ public class DocumentsValidation extends HttpServlet {
                 // Se uno dei parametri è mancante o invalido, restituisci un errore 400
                 ErrorResponse errorResponse = Utility.handleBadRequest(response, "Parametri mancanti o invalidi");
                 Utility.logError(logger, rep, "Parametri mancanti o invalidi", servletName, logString);
+                if (logId != 0) {
+                    rep.updateMonitoraggioGatewayFine(
+                            logId,
+                            "ERROR",
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            "Parametri mancanti o invalidi",
+                            null
+                    );
+                }
                 // Restituzione del JSON
                 objectMapper.writeValue(response.getWriter(), errorResponse);
                 return;
@@ -104,7 +123,6 @@ public class DocumentsValidation extends HttpServlet {
             // Simuliamo il JSON del requestBody
             String requestBodyJson = "{\"healthDataFormat\": \"CDA\", \"mode\": \"ATTACHMENT\", \"activity\": \"VALIDATION\"}";
 
-            
             try {
 
                 Utility.logInfo(logger, rep, "Richiedo Access Token...", servletName, logString);
@@ -122,6 +140,19 @@ public class DocumentsValidation extends HttpServlet {
                         Utility.logError(logger, rep, errorResponse.error_description, servletName, logString);
                         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                         response.getWriter().write(new ObjectMapper().writeValueAsString(errorResponse));
+                        if (logId != 0) {
+                            rep.updateMonitoraggioGatewayFine(
+                                    logId,
+                                    "ERROR",
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    errorResponse.error_description,
+                                    null
+                            );
+                        }
                         return; // Termina qui se c'è un errore di autenticazione
                     }
                     default -> {
@@ -132,12 +163,24 @@ public class DocumentsValidation extends HttpServlet {
                 //Utility.logError(logger, rep, e.getLocalizedMessage(), servletName, logString);
                 Exception ex = new Exception("Errore nell'ottenimento del token: " + e.getLocalizedMessage());
                 ErrorResponse errorResponse = Utility.handleException(response, ex);
+                if (logId != 0) {
+                    rep.updateMonitoraggioGatewayFine(
+                            logId,
+                            "ERROR",
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            "Errore nell'ottenimento del token: " + e.getLocalizedMessage(),
+                            null
+                    );
+                }
                 // Restituzione del JSON
                 objectMapper.writeValue(response.getWriter(), errorResponse);
                 return; // Termina l'elaborazione se c'è un'eccezione
             }
-            
-            
+
             Utility.logInfo(logger, rep, "Access Token ottenuto", servletName, logString);
 
             // Access token e JWT
@@ -182,10 +225,36 @@ public class DocumentsValidation extends HttpServlet {
                 if (resultValidation instanceof ValidationResDTO) {
                     response.setStatus(HttpServletResponse.SC_OK);
                     Utility.logInfo(logger, rep, "L'endpoint ha risposto: " + resultValidation.toString(), servletName, logString);
+                    if (logId != 0) {
+                        rep.updateMonitoraggioGatewayFine(
+                                logId,
+                                "SUCCESS",
+                                HttpServletResponse.SC_OK,
+                                null,
+                                ((ValidationResDTO) resultValidation).getWarning(),
+                                ((ValidationResDTO) resultValidation).getTraceID(),
+                                ((ValidationResDTO) resultValidation).getWorkflowInstanceId(),
+                                "Parametri mancanti o invalidi",
+                                null
+                        );
+                    }
                     objectMapper.writeValue(response.getWriter(), resultValidation);
                 } else if (resultValidation instanceof ValidationErrorResponseDTO) {
                     response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                     Utility.logInfo(logger, rep, "L'endpoint ha risposto: " + resultValidation.toString(), servletName, logString);
+                    if (logId != 0) {
+                        rep.updateMonitoraggioGatewayFine(
+                                logId,
+                                "ERROR",
+                                ((ValidationErrorResponseDTO) resultValidation).getStatus(),
+                                ((ValidationErrorResponseDTO) resultValidation).getTitle(),
+                                ((ValidationErrorResponseDTO) resultValidation).getDetail(),
+                                ((ValidationErrorResponseDTO) resultValidation).getTraceID(),
+                                ((ValidationErrorResponseDTO) resultValidation).getWorkflowInstanceId(),
+                                "Parametri mancanti o invalidi",
+                                null
+                        );
+                    }
                     objectMapper.writeValue(response.getWriter(), resultValidation);
                 }
             }
@@ -193,6 +262,17 @@ public class DocumentsValidation extends HttpServlet {
             Utility.logError(logger, rep, ex.getLocalizedMessage(), servletName, logString);
             // Gestione dell'eccezione non gestita
             ErrorResponse errorResponse = Utility.handleException(response, ex);
+            rep.updateMonitoraggioGatewayFine(
+                    logId,
+                    "ERROR",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    ex.getLocalizedMessage(),
+                    null
+            );
             // Restituzione del JSON
             objectMapper.writeValue(response.getWriter(), errorResponse);
         } finally {

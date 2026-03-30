@@ -20,7 +20,7 @@ public class TokenMap {
     private static final String PURPOSE_OF_USE = "TREATMENT";
     private static final String ISSUER_TOPGATE = "S1#070TOPGATEXXX1";
     private static final String ISSUER_ASL = "S1#070105000000XX";
-    private static final String LOCALITY = "RADIOLOGIA ASL5 PROVA^^^^^&2.16.840.1.113883.2.9.4.1.3&ISO^^^^070105010025";
+    private static final String LOCALITY = "Azienda Sanitaria Locale 5 Spezzina-POLIAMB OSP LA SPEZIA CENTRO^^^^^&2.16.840.1.113883.2.9.4.1.3&ISO^^^^070105197570";
     private static final String SUBJECT_ORG_ID = "070";
     private static final String SUBJECT_ORGANIZATION = "Regione Liguria";
     private static final String AUDIENCE = "https://modipa-val.fse.salute.gov.it/govway/rest/in/FSE/gateway/v1";
@@ -67,7 +67,7 @@ public class TokenMap {
                 String relativePathP12 = properties.getProperty("p12.RSA");
                 String absolutePathP12 = context.getRealPath(relativePathP12);
                 mapJD.put("iss", ISSUER_TOPGATE); //da cambiare con quello TOPGATE poi
-                mapJD.put("subject_application_id", "refertospecialisticaambulatoriale");
+                mapJD.put("subject_application_id", "topamb");
                 mapJD.put("subject_application_vendor", "topgate");
                 mapJD.put("subject_application_version", "1.0");
                 mapJD.put("resource_hl7_type", "('11488-4^^2.16.840.1.113883.6.1')");

@@ -234,7 +234,7 @@ public class DocumentsValidation extends HttpServlet {
                                 ((ValidationResDTO) resultValidation).getWarning(),
                                 ((ValidationResDTO) resultValidation).getTraceID(),
                                 ((ValidationResDTO) resultValidation).getWorkflowInstanceId(),
-                                "Parametri mancanti o invalidi",
+                                "",
                                 null
                         );
                     }

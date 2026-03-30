@@ -21,6 +21,15 @@ public class ValidationErrorResponseDTO {
     private int status;
     private String instance;
     private String workflowInstanceId;
+    private String govway_id;
+
+    public String getGovway_id() {
+        return govway_id;
+    }
+
+    public void setGovway_id(String govway_id) {
+        this.govway_id = govway_id;
+    }
 
     // Getters e Setters
     public String getTraceID() {

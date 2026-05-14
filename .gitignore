@@ -1,0 +1,16 @@
+# Configurazioni locali/reali con credenziali o endpoint interni
+src/main/webapp/META-INF/context.xml
+**/context.xml
+**/GatewayFSE.xml
+
+# File generati/build
+target/
+*.class
+*.war
+*.jar
+
+# IDE
+.nb-gradle/
+nbproject/private/
+.idea/
+.vscode/

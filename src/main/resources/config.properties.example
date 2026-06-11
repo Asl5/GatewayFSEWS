@@ -1,0 +1,47 @@
+
+# Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+# Click nbfs://nbhost/SystemFileSystem/Templates/Other/properties.properties to edit this template
+
+#path del file di log
+log.path = C:/temp/
+log.level=INFO
+debug.mode=false
+
+#configurazione per l'ottenimento dell' Access Token
+
+token.url=https://idptest.regione.liguria.it/oauth2/token
+authorization.header= <authorization header>
+
+#certificati per la mTLS
+path.FileP12 = /WEB-INF/services-fse2-test.pfx
+
+passwordTLS = <pwd>
+
+ssl.keystore.password = <pwd>
+
+#file .pem per la cifratura del token JWT
+pem.LDO = /WEB-INF/S1#070TOPGATEXXX1.pem
+pem.CERT_VACC_SKIPPER = /WEB-INF/S1#070TOPGATEXXX1.pem
+pem.SING_VACC_SKIPPER = /WEB-INF/S1#070TOPGATEXXX1.pem
+pem.SING_VACC_PHTRACK = /WEB-INF/S1070105000000XX_sign.pem
+pem.CERT_VACC = /WEB-INF/S1070105000000XX_sign.pem
+pem.SING_VACC = /WEB-INF/S1070105000000XX_sign.pem
+pem.RSA = /WEB-INF/S1#070TOPGATEXXX1.pem
+
+
+#file .p12 per la cifratura del token JWT
+p12.LDO = /WEB-INF/topgate.pfx
+p12.CERT_VACC_SKIPPER = /WEB-INF/topgate.pfx
+p12.SING_VACC_SKIPPER = /WEB-INF/topgate.pfx
+p12.SING_VACC_PHTRACK = /WEB-INF/S1070105000000XX.pfx
+p12.CERT_VACC = /WEB-INF/S1070105000000XX.pfx
+p12.SING_VACC = /WEB-INF/S1070105000000XX.pfx
+p12.RSA = /WEB-INF/topgate.pfx
+
+
+#password per i file p12
+p12.Topgate.password = <pwd>
+p12.asl5.password = <pwd>
+
+#url servizi gateway
+url.validation = https://services-fse2-test.regione.liguria.it/api/gateway/v1/documents/validation

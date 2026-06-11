@@ -1,5 +1,7 @@
 # Configurazioni locali/reali con credenziali o endpoint interni
 src/main/webapp/META-INF/context.xml
+src/main/resources/config.properties
+resources/
 **/context.xml
 **/GatewayFSE.xml
 
